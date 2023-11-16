@@ -1,0 +1,52 @@
+from web3 import Web3
+from eth_utils import to_hex
+
+# 创建Web3实例
+web3 = Web3()
+
+# 定义交易参数
+address = '0x1234567890abcdef'  # 替换为实际的账户地址
+chain_id = 137  # 替换为实际的链ID
+from_address = address
+data = '0x646174613a2c7b2270223a227072632d3230222c226f70223a226d696e74222c227469636b223a22706f6c73222c22616d74223a22313030303030303030227d'
+gas_price = web3.eth.gas_price
+value = 0
+
+# 获取交易计数器的异步版本
+async def get_nonce():
+    return await web3.eth.get_transaction_count(from_address)
+
+# 构建交易对象
+def build_transaction(nonce):
+    transaction = {
+        'nonce': nonce,
+        'chainId': chain_id,
+        'to': address,
+        'from': from_address,
+        'data': data,
+        'gasPrice': gas_price,
+        'value': value
+    }
+    return transaction
+
+# 发送交易的异步版本
+async def send_transaction(transaction):
+    signed_tx = web3.eth.account.sign_transaction(transaction, private_key='YOUR_PRIVATE_KEY')
+    tx_hash = await web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    return to_hex(tx_hash)
+
+# 异步执行主要逻辑
+async def main():
+    nonce = await get_nonce()
+    transaction = build_transaction(nonce)
+    tx_hash = await send_transaction(transaction)
+    print(f'Transaction hash: {tx_hash}')
+
+# 运行异步函数
+web3.eth.enable_unaudited_features()
+web3.middleware_onion.inject(web3.middleware.fast_gas_price_strategy, gas_price_strategy="fastest")
+web3.middleware_onion.inject(web3.middleware.time_based_cache_middleware, cache_period=1)
+web3.middleware_onion.inject(web3.middleware.latest_block_based_cache_middleware)
+web3.middleware_onion.inject(web3.middleware.geth_poa_middleware)
+
+asyncio.run(main())
